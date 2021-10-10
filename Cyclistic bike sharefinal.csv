@@ -1,0 +1,114 @@
+#installing packages
+install.packages("tidyverse")
+library(tidyverse)
+install.packages("dplyr")
+library(dplyr)
+install.packages("readr")
+library(readr)
+install.packages("lubridate")
+library(lubridate)
+install.packages("ggplot2")
+library(ggplot2)
+
+#setting working directory
+setwd("~/Desktop/Bike_Riders_Data/csv-files-bike")
+getwd()
+
+#creating data frames to read the csv files
+april20 <- read_csv("202004-divvy-tripdata.csv")
+may20 <- read_csv("202005-divvy-tripdata.csv")
+june20 <- read_csv("202006-divvy-tripdata.csv")
+july20 <- read_csv("202007-divvy-tripdata.csv")
+august20 <- read_csv("202008-divvy-tripdata.csv")
+september20 <- read_csv("202009-divvy-tripdata.csv")
+october20 <- read_csv("202010-divvy-tripdata.csv")
+november20 <- read_csv("202011-divvy-tripdata.csv")
+december20 <- read_csv("202012-divvy-tripdata.csv")
+january21 <- read_csv("202101-divvy-tripdata.csv")
+february21 <- read_csv("202102-divvy-tripdata.csv")
+march21 <- read_csv("202103-divvy-tripdata.csv")
+
+#changing the datatype to character
+november20 <-  mutate(november20, start_station_id = as.character(start_station_id),end_station_id = as.character(end_station_id))
+october20 <-  mutate(october20, start_station_id = as.character(start_station_id),end_station_id = as.character(end_station_id))
+september20 <-  mutate(september20, start_station_id = as.character(start_station_id),end_station_id = as.character(end_station_id))
+august20 <-  mutate(august20, start_station_id = as.character(start_station_id),end_station_id = as.character(end_station_id))
+july20 <- mutate(july20, start_station_id = as.character(start_station_id),end_station_id = as.character(end_station_id))
+june20 <-  mutate(june20, start_station_id = as.character(start_station_id),end_station_id = as.character(end_station_id))
+may20 <-  mutate(may20, start_station_id = as.character(start_station_id),end_station_id = as.character(end_station_id))
+april20 <-  mutate(april20, start_station_id = as.character(start_station_id),end_station_id = as.character(end_station_id))
+
+#binding all rows into one dataframe
+all_trips <- bind_rows(april20, may20, june20, july20, august20, september20, october20, november20, december20, january21, february21, march21)
+
+
+colnames(all_trips)#column nmames
+dim(all_trips)#dimensions of dataframe
+head(all_trips)#header of dataframe
+summary(all_trips)#summary of dataframe
+
+#formatting as date, day of the week, ride length
+table(all_trips$member_casual)
+all_trips$date <- as.Date(all_trips$started_at)
+all_trips$day_of_week <- format(as.Date(all_trips$date),"%A")
+all_trips$ride_length <- difftime(all_trips$ended_at, all_trips$started_at, tz, units="mins")
+
+summary(all_trips)
+#creating new data frame V2 as we have noticed NA's in end_lat and some negative values in ride_length
+#cleaning or removing NA's and -ve values
+all_trips_v2 <- all_trips[!((all_trips$end_lat == "") | is.na(all_trips$end_lat)|(all_trips$ride_length <= 0)), ]
+summary(all_trips_v2)
+
+# Descriptive analysis on ride_length (all figures in seconds)
+mean(all_trips_v2$ride_length) #straight average (total ride length / rides)
+median(all_trips_v2$ride_length) #midpoint number in the ascending array of ride lengths
+max(all_trips_v2$ride_length) #longest ride
+min(all_trips_v2$ride_length) #shortest ride
+
+summary(all_trips_v2$ride_length)
+
+# Compare members and casual users
+aggregate(all_trips_v2$ride_length ~ all_trips_v2$member_casual, FUN = mean)
+aggregate(all_trips_v2$ride_length ~ all_trips_v2$member_casual, FUN = median)
+aggregate(all_trips_v2$ride_length ~ all_trips_v2$member_casual, FUN = max)
+aggregate(all_trips_v2$ride_length ~ all_trips_v2$member_casual, FUN = min)
+
+# See the average ride time by each day for members vs casual users
+aggregate(all_trips_v2$ride_length ~ all_trips_v2$member_casual + all_trips_v2$day_of_week, FUN = mean)
+
+# Notice that the days of the week are out of order. Let's fix that.
+all_trips_v2$day_of_week <- ordered(all_trips_v2$day_of_week, levels=c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
+
+# Now, let's run the average ride time by each day for members vs casual users
+aggregate(all_trips_v2$ride_length ~ all_trips_v2$member_casual + all_trips_v2$day_of_week, FUN = mean)
+
+# analyze ridership data by type and weekday
+all_trips_v2 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>%  #creates weekday field using wday()
+  group_by(member_casual, weekday) %>%  #groups by usertype and weekday
+  summarise(number_of_rides = n()							#calculates the number of rides and average duration 
+            ,average_duration = mean(ride_length)) %>% 		# calculates the average duration
+  arrange(member_casual, weekday)								# sorts
+
+# Let's visualize the number of rides by rider type
+all_trips_v2 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, weekday) %>% 
+  summarise(number_of_rides = n()
+            ,average_duration = mean(ride_length)) %>% 
+  arrange(member_casual, weekday)  %>% 
+  ggplot(aes(x = weekday, y = number_of_rides, fill = member_casual)) +
+  geom_col(position = "dodge")
+
+# Let's create a visualization for average duration
+all_trips_v2 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, weekday) %>% 
+  summarise(number_of_rides = n()
+            ,average_duration = mean(ride_length)) %>% 
+  arrange(member_casual, weekday)  %>% 
+  ggplot(aes(x = weekday, y = average_duration, fill = member_casual)) +
+  geom_col(position = "dodge")
+
+
+write.csv(all_trips_v2, "~/Desktop/Bike_Riders_Data/csv-files-Bikes.csv")
