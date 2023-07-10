@@ -1,4 +1,5 @@
 #installing packages
+#sample code
 install.packages("tidyverse")
 library(tidyverse)
 install.packages("dplyr")
